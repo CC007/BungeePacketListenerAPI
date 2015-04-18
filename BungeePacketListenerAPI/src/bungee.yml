@@ -1,0 +1,4 @@
+name: BungeePacketListenerApi
+author: inventivetalent
+version: 1.0
+main: de.inventivegames.packetlistener.bungee.PacketListenerAPI
