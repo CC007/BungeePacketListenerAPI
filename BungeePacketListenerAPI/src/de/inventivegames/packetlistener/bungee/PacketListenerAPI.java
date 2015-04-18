@@ -45,6 +45,9 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.netty.ChannelWrapper;
 import net.md_5.bungee.protocol.DefinedPacket;
 import net.md_5.bungee.protocol.PacketWrapper;
+
+import org.mcstats.MetricsLite;
+
 import de.inventivegames.packetlistener.handler.PacketHandler;
 import de.inventivegames.packetlistener.handler.ReceivedPacket;
 import de.inventivegames.packetlistener.handler.SentPacket;
@@ -61,6 +64,21 @@ public class PacketListenerAPI extends Plugin implements Listener {
 	@Override
 	public void onEnable() {
 		ProxyServer.getInstance().getPluginManager().registerListener(this, this);
+
+		ProxyServer.getInstance().getScheduler().runAsync(this, new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					MetricsLite metrics = new MetricsLite(PacketListenerAPI.this);
+					if (metrics.start()) {
+						System.out.println("[BungeePacketListenerAPI] Metrics started.");
+					}
+				} catch (Exception e) {
+				}
+			}
+		});
+
 	}
 
 	@EventHandler
