@@ -30,6 +30,7 @@ package de.inventivegames.packetlistener.handler;
 
 import java.lang.reflect.Field;
 
+import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.protocol.DefinedPacket;
 import net.md_5.bungee.protocol.PacketWrapper;
@@ -43,12 +44,20 @@ import de.inventivegames.packetlistener.bungee.Cancellable;
  */
 public abstract class Packet {
 
-	private ProxiedPlayer	player;
-	private Object			packet;
-	private Cancellable		cancel;
+	private ProxiedPlayer		player;
+	private PendingConnection	connection;
+
+	private Object				packet;
+	private Cancellable			cancel;
 
 	public Packet(Object packet, Cancellable cancel, ProxiedPlayer player) {
 		this.player = player;
+		this.packet = packet;
+		this.cancel = cancel;
+	}
+
+	public Packet(Object packet, Cancellable cancel, PendingConnection connection) {
+		this.connection = connection;
 		this.packet = packet;
 		this.cancel = cancel;
 	}
@@ -112,6 +121,10 @@ public abstract class Packet {
 	 */
 	public ProxiedPlayer getPlayer() {
 		return this.player;
+	}
+
+	public PendingConnection getConection() {
+		return this.connection;
 	}
 
 	/**

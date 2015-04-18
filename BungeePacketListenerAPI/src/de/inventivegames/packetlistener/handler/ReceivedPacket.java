@@ -28,6 +28,7 @@
 
 package de.inventivegames.packetlistener.handler;
 
+import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import de.inventivegames.packetlistener.bungee.Cancellable;
 
@@ -41,6 +42,10 @@ public class ReceivedPacket extends Packet {
 
 	public ReceivedPacket(Object packet, Cancellable cancel, ProxiedPlayer player) {
 		super(packet, cancel, player);
+	}
+	
+	public ReceivedPacket(Object packet, Cancellable cancel, PendingConnection connection) {
+		super(packet, cancel, connection);
 	}
 
 }

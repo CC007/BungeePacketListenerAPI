@@ -31,7 +31,13 @@ package de.inventivegames.packetlistener.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.md_5.bungee.api.connection.PendingConnection;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
+import net.md_5.bungee.connection.InitialHandler;
+import net.md_5.bungee.netty.ChannelWrapper;
+import net.md_5.bungee.protocol.DefinedPacket;
+import de.inventivegames.packetlistener.bungee.PacketListenerAPI;
 
 /**
  *
@@ -116,19 +122,23 @@ public abstract class PacketHandler {
 		return handlers;
 	}
 
-	// TODO
-	// // Sending methods
-	// public void sendPacket(ProxiedPlayer p, Object packet) {
-	// if (p == null || packet == null) throw new NullPointerException();
-	// try {
-	// Object handle = NMSUtils.getHandle(p);
-	// Object connection = NMSUtils.getField(handle.getClass(), "playerConnection").get(handle);
-	// NMSUtils.getMethod(connection.getClass(), "sendPacket", NMSUtils.getNMSClass("Packet")).invoke(connection, new Object[] { packet });
-	// } catch (Exception e) {
-	// System.err.println("[PacketListenerAPI] Exception while sending " + packet + " to " + p);
-	// e.printStackTrace();
-	// }
-	// }
+	// Sending methods
+	public void sendPacket(ProxiedPlayer p, Object packet) {
+		if (p == null || packet == null) throw new NullPointerException();
+		try {
+			ChannelWrapper channel = PacketListenerAPI.getChannel(p);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void sendPacket(PendingConnection conn, DefinedPacket packet) {
+		if (conn == null || packet == null) throw new NullPointerException();
+		if (conn instanceof InitialHandler) {
+			InitialHandler handler = (InitialHandler) conn;
+			handler.unsafe().sendPacket(packet);
+		}
+	}
 
 	// public Object cloneObject(Object obj) throws Exception {
 	// if (obj == null) return obj;
