@@ -75,6 +75,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 						System.out.println("[BungeePacketListenerAPI] Metrics started.");
 					}
 				} catch (Exception e) {
+				e.printStackTrace();
 				}
 			}
 		});
@@ -96,6 +97,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 	public void onQuit(PlayerDisconnectEvent e) {
 		removeChannel(e.getPlayer());
 	}
+	
 
 	public static ChannelWrapper getChannel(ProxiedPlayer player) throws Exception {
 		ChannelWrapper channel = (ChannelWrapper) AccessUtil.setAccessible(UserConnection.class.getDeclaredField("ch")).get((UserConnection) player);

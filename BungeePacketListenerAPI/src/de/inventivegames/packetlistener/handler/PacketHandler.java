@@ -35,9 +35,7 @@ import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.connection.InitialHandler;
-import net.md_5.bungee.netty.ChannelWrapper;
 import net.md_5.bungee.protocol.DefinedPacket;
-import de.inventivegames.packetlistener.bungee.PacketListenerAPI;
 
 /**
  *
@@ -123,13 +121,9 @@ public abstract class PacketHandler {
 	}
 
 	// Sending methods
-	public void sendPacket(ProxiedPlayer p, Object packet) {
+	public void sendPacket(ProxiedPlayer p, DefinedPacket packet) {
 		if (p == null || packet == null) throw new NullPointerException();
-		try {
-			ChannelWrapper channel = PacketListenerAPI.getChannel(p);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		p.unsafe().sendPacket(packet);
 	}
 
 	public void sendPacket(PendingConnection conn, DefinedPacket packet) {
@@ -139,16 +133,6 @@ public abstract class PacketHandler {
 			handler.unsafe().sendPacket(packet);
 		}
 	}
-
-	// public Object cloneObject(Object obj) throws Exception {
-	// if (obj == null) return obj;
-	// Object clone = obj.getClass().newInstance();
-	// for (Field f : obj.getClass().getDeclaredFields()) {
-	// f = AccessUtil.setAccessible(f);
-	// f.set(clone, f.get(obj));
-	// }
-	// return clone;
-	// }
 
 	// //////////////////////////////////////////////////
 
