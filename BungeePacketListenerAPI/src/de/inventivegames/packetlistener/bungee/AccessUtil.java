@@ -32,7 +32,7 @@ import java.lang.reflect.Field;
 
 /**
  *
- * � Copyright 2013-2015 inventivetalent
+ * © Copyright 2013-2015 inventivetalent
  *
  * @author inventivetalent
  *
