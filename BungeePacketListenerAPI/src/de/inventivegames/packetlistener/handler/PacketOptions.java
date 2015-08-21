@@ -47,4 +47,9 @@ public @interface PacketOptions {
 	 */
 	boolean forceServer() default false;
 
+	/**
+	 * @return <code>true</code> if raw packets (without an actual packet object) should be ignored
+	 */
+	boolean ignoreRaw() default false;
+
 }

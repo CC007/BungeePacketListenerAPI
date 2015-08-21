@@ -28,13 +28,13 @@
 
 package de.inventivegames.packetlistener.handler;
 
-import java.lang.reflect.Field;
-
+import de.inventivegames.packetlistener.bungee.Cancellable;
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.protocol.DefinedPacket;
 import net.md_5.bungee.protocol.PacketWrapper;
-import de.inventivegames.packetlistener.bungee.Cancellable;
+
+import java.lang.reflect.Field;
 
 /**
  * Base class for sent or received packets
@@ -44,31 +44,42 @@ import de.inventivegames.packetlistener.bungee.Cancellable;
  */
 public abstract class Packet {
 
-	private ProxiedPlayer		player;
-	private PendingConnection	connection;
+	private ProxiedPlayer     player;
+	private PendingConnection connection;
 
-	private Object				packet;
-	private Cancellable			cancel;
+	private int packetId = -1;
+	private Object      packet;
+	private Cancellable cancel;
 
 	public Packet(Object packet, Cancellable cancel, ProxiedPlayer player) {
 		this.player = player;
-		this.packet = packet;
+		if (packet instanceof Integer) { this.packetId = (Integer) packet; } else { this.packet = packet; }
+		if (packet instanceof PacketWrapper) {
+			int packetId = DefinedPacket.readVarInt(((PacketWrapper) packet).buf.copy());
+			if (packetId != 0) {
+				this.packetId = packetId;
+			}
+		}
 		this.cancel = cancel;
 	}
 
 	public Packet(Object packet, Cancellable cancel, PendingConnection connection) {
 		this.connection = connection;
-		this.packet = packet;
+		if (packet instanceof Integer) { this.packetId = (Integer) packet; } else { this.packet = packet; }
+		if (packet instanceof PacketWrapper) {
+			int packetId = DefinedPacket.readVarInt(((PacketWrapper) packet).buf.copy());
+			if (packetId != 0) {
+				this.packetId = packetId;
+			}
+		}
 		this.cancel = cancel;
 	}
 
 	/**
 	 * Modify a value of the packet
 	 *
-	 * @param field
-	 *            Name of the field to modify
-	 * @param value
-	 *            Value to be assigned to the field
+	 * @param field Name of the field to modify
+	 * @param value Value to be assigned to the field
 	 */
 	public void setPacketValue(String field, Object value) {
 		try {
@@ -83,8 +94,7 @@ public abstract class Packet {
 	/**
 	 * Get a value of the packet
 	 *
-	 * @param field
-	 *            Name of the field
+	 * @param field Name of the field
 	 * @return current value of the field
 	 */
 	public Object getPacketValue(String field) {
@@ -100,8 +110,7 @@ public abstract class Packet {
 	}
 
 	/**
-	 * @param b
-	 *            if set to <code>true</code> the packet will be cancelled
+	 * @param b if set to <code>true</code> the packet will be cancelled
 	 */
 	public void setCancelled(boolean b) {
 		this.cancel.setCancelled(b);
@@ -116,7 +125,6 @@ public abstract class Packet {
 
 	/**
 	 * @return The receiving or sending player of the packet
-	 *
 	 * @see #hasPlayer()
 	 */
 	public ProxiedPlayer getPlayer() {
@@ -136,20 +144,18 @@ public abstract class Packet {
 
 	/**
 	 * @return The name of the receiving or sending player
-	 *
 	 * @see #hasPlayer()
 	 * @see #getPlayer()
 	 */
 	public String getPlayername() {
-		if (!this.hasPlayer()) return null;
+		if (!this.hasPlayer()) { return null; }
 		return this.player.getName();
 	}
 
 	/**
 	 * Change the packet that is sent
 	 *
-	 * @param packet
-	 *            new packet
+	 * @param packet new packet
 	 */
 	public void setPacket(DefinedPacket packet) {
 		if (this.packet instanceof DefinedPacket) {
@@ -188,7 +194,15 @@ public abstract class Packet {
 	 * @return the class name of the sent or received packet
 	 */
 	public String getPacketName() {
-		return this.packet.getClass().getSimpleName();
+		return isRaw() ? String.format("0x%02X", packetId) : this.packet.getClass().getSimpleName();
+	}
+
+	public int getPacketId() {
+		return packetId;
+	}
+
+	public boolean isRaw() {
+		return packetId != -1;
 	}
 
 	@Override
@@ -203,19 +217,19 @@ public abstract class Packet {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj) return true;
-		if (obj == null) return false;
-		if (this.getClass() != obj.getClass()) return false;
+		if (this == obj) { return true; }
+		if (obj == null) { return false; }
+		if (this.getClass() != obj.getClass()) { return false; }
 		Packet other = (Packet) obj;
 		if (this.cancel == null) {
-			if (other.cancel != null) return false;
-		} else if (!this.cancel.equals(other.cancel)) return false;
+			if (other.cancel != null) { return false; }
+		} else if (!this.cancel.equals(other.cancel)) { return false; }
 		if (this.packet == null) {
-			if (other.packet != null) return false;
-		} else if (!this.packet.equals(other.packet)) return false;
+			if (other.packet != null) { return false; }
+		} else if (!this.packet.equals(other.packet)) { return false; }
 		if (this.player == null) {
-			if (other.player != null) return false;
-		} else if (!this.player.equals(other.player)) return false;
+			if (other.player != null) { return false; }
+		} else if (!this.player.equals(other.player)) { return false; }
 		return true;
 	}
 

@@ -28,6 +28,10 @@
 
 package de.inventivegames.packetlistener.bungee;
 
+import de.inventivegames.packetlistener.handler.PacketHandler;
+import de.inventivegames.packetlistener.handler.ReceivedPacket;
+import de.inventivegames.packetlistener.handler.SentPacket;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -45,19 +49,12 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.netty.ChannelWrapper;
 import net.md_5.bungee.protocol.DefinedPacket;
 import net.md_5.bungee.protocol.PacketWrapper;
-
 import org.mcstats.MetricsLite;
 
-import de.inventivegames.packetlistener.handler.PacketHandler;
-import de.inventivegames.packetlistener.handler.ReceivedPacket;
-import de.inventivegames.packetlistener.handler.SentPacket;
-
 /**
- *
  * © Copyright 2015 inventivetalent
  *
  * @author inventivetalent
- *
  */
 public class PacketListenerAPI extends Plugin implements Listener {
 
@@ -75,11 +72,10 @@ public class PacketListenerAPI extends Plugin implements Listener {
 						System.out.println("[BungeePacketListenerAPI] Metrics started.");
 					}
 				} catch (Exception e) {
-				e.printStackTrace();
+					e.printStackTrace();
 				}
 			}
 		});
-
 	}
 
 	@EventHandler
@@ -97,7 +93,6 @@ public class PacketListenerAPI extends Plugin implements Listener {
 	public void onQuit(PlayerDisconnectEvent e) {
 		removeChannel(e.getPlayer());
 	}
-	
 
 	public static ChannelWrapper getChannel(ProxiedPlayer player) throws Exception {
 		ChannelWrapper channel = (ChannelWrapper) AccessUtil.setAccessible(UserConnection.class.getDeclaredField("ch")).get((UserConnection) player);
@@ -122,13 +117,22 @@ public class PacketListenerAPI extends Plugin implements Listener {
 					public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 						Cancellable cancellable = new Cancellable();
 						Object pckt = msg;
+
+						if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+							ByteBuf copy = ((ByteBuf) pckt).copy();
+							int packetId = DefinedPacket.readVarInt(copy);
+							if (packetId != 0) {
+								onPacketSend(connection, packetId, cancellable);
+							}
+						}
+
 						if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
 							pckt = (DefinedPacket) onPacketSend(connection, (DefinedPacket) msg, cancellable);
 						}
 						if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
 							pckt = (PacketWrapper) onPacketSend(connection, msg, cancellable);
 						}
-						if (cancellable.isCancelled()) return;
+						if (cancellable.isCancelled()) { return; }
 						super.write(ctx, pckt, promise);
 					}
 
@@ -136,13 +140,22 @@ public class PacketListenerAPI extends Plugin implements Listener {
 					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 						Cancellable cancellable = new Cancellable();
 						Object pckt = msg;
+
+						if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+							ByteBuf copy = ((ByteBuf) pckt).copy();
+							int packetId = DefinedPacket.readVarInt(copy);
+							if (packetId != 0) {
+								onPacketReceive(connection, packetId, cancellable);
+							}
+						}
+
 						if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
 							pckt = (DefinedPacket) onPacketReceive(connection, (DefinedPacket) msg, cancellable);
 						}
 						if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
 							pckt = (PacketWrapper) onPacketReceive(connection, msg, cancellable);
 						}
-						if (cancellable.isCancelled()) return;
+						if (cancellable.isCancelled()) { return; }
 						super.channelRead(ctx, pckt);
 					}
 
@@ -165,13 +178,22 @@ public class PacketListenerAPI extends Plugin implements Listener {
 				public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 					Cancellable cancellable = new Cancellable();
 					Object pckt = msg;
+
+					if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+						ByteBuf copy = ((ByteBuf) pckt).copy();
+						int packetId = DefinedPacket.readVarInt(copy);
+						if (packetId != 0) {
+							onPacketSend(player, packetId, cancellable);
+						}
+					}
+
 					if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
 						pckt = (DefinedPacket) onPacketSend(player, (DefinedPacket) msg, cancellable);
 					}
 					if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
 						pckt = (PacketWrapper) onPacketSend(player, msg, cancellable);
 					}
-					if (cancellable.isCancelled()) return;
+					if (cancellable.isCancelled()) { return; }
 					super.write(ctx, pckt, promise);
 				}
 
@@ -179,13 +201,22 @@ public class PacketListenerAPI extends Plugin implements Listener {
 				public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 					Cancellable cancellable = new Cancellable();
 					Object pckt = msg;
+
+					if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+						ByteBuf copy = ((ByteBuf) pckt).copy();
+						int packetId = DefinedPacket.readVarInt(copy);
+						if (packetId != 0) {
+							onPacketReceive(player, packetId, cancellable);
+						}
+					}
+
 					if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
 						pckt = (DefinedPacket) onPacketReceive(player, (DefinedPacket) msg, cancellable);
 					}
 					if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
 						pckt = (PacketWrapper) onPacketReceive(player, msg, cancellable);
 					}
-					if (cancellable.isCancelled()) return;
+					if (cancellable.isCancelled()) { return; }
 					super.channelRead(ctx, pckt);
 				}
 
@@ -205,7 +236,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 	}
 
 	public Object onPacketReceive(Object p, Object packet, Cancellable cancellable) {
-		if (packet == null) return packet;
+		if (packet == null) { return packet; }
 		ReceivedPacket pckt = null;
 		if (p instanceof ProxiedPlayer) {
 			pckt = new ReceivedPacket(packet, cancellable, (ProxiedPlayer) p);
@@ -221,7 +252,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 	}
 
 	public Object onPacketSend(Object p, Object packet, Cancellable cancellable) {
-		if (packet == null) return packet;
+		if (packet == null) { return packet; }
 		SentPacket pckt = null;
 		if (p instanceof ProxiedPlayer) {
 			pckt = new SentPacket(packet, cancellable, (ProxiedPlayer) p);
@@ -229,7 +260,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 		if (p instanceof PendingConnection) {
 			pckt = new SentPacket(packet, cancellable, (PendingConnection) p);
 		}
-		if (pckt == null) return packet;
+		if (pckt == null) { return packet; }
 		PacketHandler.notifyHandlers(pckt);
 		return pckt.getSourcePacket();
 	}

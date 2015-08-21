@@ -28,25 +28,23 @@
 
 package de.inventivegames.packetlistener.handler;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.connection.InitialHandler;
 import net.md_5.bungee.protocol.DefinedPacket;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- *
  * © Copyright 2015 inventivetalent
  *
  * @author inventivetalent
- *
  */
 public abstract class PacketHandler {
 
-	private static final List<PacketHandler>	handlers	= new ArrayList<PacketHandler>();
+	private static final List<PacketHandler> handlers = new ArrayList<PacketHandler>();
 
 	public static boolean addHandler(PacketHandler handler) {
 		boolean b = handlers.contains(handler);
@@ -63,13 +61,18 @@ public abstract class PacketHandler {
 			try {
 				PacketOptions options = handler.getClass().getMethod("onSend", SentPacket.class).getAnnotation(PacketOptions.class);
 				if (options != null) {
-					if (options.forcePlayer() && options.forceServer()) throw new IllegalArgumentException("Cannot force player and server packets at the same time!");
+					if (options.forcePlayer() && options.forceServer()) { throw new IllegalArgumentException("Cannot force player and server packets at the same time!"); }
 					if (options.forcePlayer()) {
 						if (!packet.hasPlayer()) {
 							continue;
 						}
 					} else if (options.forceServer()) {
 						if (packet.hasPlayer()) {
+							continue;
+						}
+					}
+					if (options.ignoreRaw()) {
+						if (packet.isRaw()) {
 							continue;
 						}
 					}
@@ -87,13 +90,18 @@ public abstract class PacketHandler {
 			try {
 				PacketOptions options = handler.getClass().getMethod("onReceive", ReceivedPacket.class).getAnnotation(PacketOptions.class);
 				if (options != null) {
-					if (options.forcePlayer() && options.forceServer()) throw new IllegalArgumentException("Cannot force player and server packets at the same time!");
+					if (options.forcePlayer() && options.forceServer()) { throw new IllegalArgumentException("Cannot force player and server packets at the same time!"); }
 					if (options.forcePlayer()) {
 						if (!packet.hasPlayer()) {
 							continue;
 						}
 					} else if (options.forceServer()) {
 						if (packet.hasPlayer()) {
+							continue;
+						}
+					}
+					if (options.ignoreRaw()) {
+						if (packet.isRaw()) {
 							continue;
 						}
 					}
@@ -112,7 +120,7 @@ public abstract class PacketHandler {
 
 	public static List<PacketHandler> getForPlugin(Plugin plugin) {
 		List<PacketHandler> handlers = new ArrayList<>();
-		if (plugin == null) return handlers;
+		if (plugin == null) { return handlers; }
 		for (PacketHandler h : getHandlers())
 			if (plugin.equals(h.getPlugin())) {
 				handlers.add(h);
@@ -122,12 +130,12 @@ public abstract class PacketHandler {
 
 	// Sending methods
 	public void sendPacket(ProxiedPlayer p, DefinedPacket packet) {
-		if (p == null || packet == null) throw new NullPointerException();
+		if (p == null || packet == null) { throw new NullPointerException(); }
 		p.unsafe().sendPacket(packet);
 	}
 
 	public void sendPacket(PendingConnection conn, DefinedPacket packet) {
-		if (conn == null || packet == null) throw new NullPointerException();
+		if (conn == null || packet == null) { throw new NullPointerException(); }
 		if (conn instanceof InitialHandler) {
 			InitialHandler handler = (InitialHandler) conn;
 			handler.unsafe().sendPacket(packet);
@@ -136,7 +144,7 @@ public abstract class PacketHandler {
 
 	// //////////////////////////////////////////////////
 
-	private Plugin	plugin;
+	private Plugin plugin;
 
 	@Deprecated
 	public PacketHandler() {
