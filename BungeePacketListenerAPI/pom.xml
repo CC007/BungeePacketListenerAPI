@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.inventivetalent</groupId>
     <artifactId>packetlistenerapi-bungee</artifactId>
-    <version>1.2</version>
+    <version>1.3.0</version>
     <name>BungeePacketListenerAPI</name>
     <build>
         <finalName>BungeePacketListenerAPI_v${project.version}</finalName>
@@ -112,18 +112,21 @@
             <artifactId>bungeecord-api</artifactId>
             <version>1.8-SNAPSHOT</version>
             <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>net.md-5</groupId>
             <artifactId>bungeecord-protocol</artifactId>
             <version>1.8-SNAPSHOT</version>
             <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>net.md-5</groupId>
             <artifactId>bungeecord-proxy</artifactId>
             <version>1.8-SNAPSHOT</version>
             <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>
