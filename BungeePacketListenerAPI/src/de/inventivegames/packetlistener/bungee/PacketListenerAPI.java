@@ -182,9 +182,7 @@ public class PacketListenerAPI extends Plugin implements Listener {
 					if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
 						ByteBuf copy = ((ByteBuf) pckt).copy();
 						int packetId = DefinedPacket.readVarInt(copy);
-						if (packetId != 0) {
-							onPacketSend(player, packetId, cancellable);
-						}
+						onPacketSend(player, packetId, cancellable);
 					}
 
 					if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
