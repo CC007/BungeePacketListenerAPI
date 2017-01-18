@@ -25,12 +25,12 @@
  * authors and contributors and should not be interpreted as representing official policies,
  * either expressed or implied, of anybody else.
  */
-
 package de.inventivegames.packetlistener.handler;
 
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import de.inventivegames.packetlistener.bungee.Cancellable;
+import io.netty.buffer.ByteBuf;
 
 /**
  * Wrapper class for sent packets
@@ -40,12 +40,20 @@ import de.inventivegames.packetlistener.bungee.Cancellable;
  */
 public class SentPacket extends Packet {
 
-	public SentPacket(Object packet, Cancellable cancel, ProxiedPlayer player) {
-		super(packet, cancel, player);
-	}
+    public SentPacket(Object packet, Cancellable cancel, ProxiedPlayer player) {
+        super(packet, cancel, player);
+    }
 
-	public SentPacket(Object packet, Cancellable cancel, PendingConnection connection) {
-		super(packet, cancel, connection);
-	}
+    public SentPacket(Object packet, Cancellable cancel, PendingConnection connection) {
+        super(packet, cancel, connection);
+    }
+
+    public SentPacket(Object packet, ByteBuf raw, Cancellable cancel, ProxiedPlayer player) {
+        super(packet, raw, cancel, player);
+    }
+
+    public SentPacket(Object packet, ByteBuf raw, Cancellable cancel, PendingConnection connection) {
+        super(packet, raw, cancel, connection);
+    }
 
 }

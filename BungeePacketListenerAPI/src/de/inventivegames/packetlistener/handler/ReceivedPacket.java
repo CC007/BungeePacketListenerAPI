@@ -31,6 +31,7 @@ package de.inventivegames.packetlistener.handler;
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import de.inventivegames.packetlistener.bungee.Cancellable;
+import io.netty.buffer.ByteBuf;
 
 /**
  * Wrapper class or received packets
@@ -46,6 +47,14 @@ public class ReceivedPacket extends Packet {
 	
 	public ReceivedPacket(Object packet, Cancellable cancel, PendingConnection connection) {
 		super(packet, cancel, connection);
+	}
+    
+    public ReceivedPacket(Object packet, ByteBuf raw, Cancellable cancel, ProxiedPlayer player) {
+		super(packet, raw, cancel, player);
+	}
+	
+	public ReceivedPacket(Object packet, ByteBuf raw, Cancellable cancel, PendingConnection connection) {
+		super(packet, raw, cancel, connection);
 	}
 
 }

@@ -25,7 +25,6 @@
  * authors and contributors and should not be interpreted as representing official policies,
  * either expressed or implied, of anybody else.
  */
-
 package de.inventivegames.packetlistener.bungee;
 
 import de.inventivegames.packetlistener.handler.PacketHandler;
@@ -33,8 +32,10 @@ import de.inventivegames.packetlistener.handler.ReceivedPacket;
 import de.inventivegames.packetlistener.handler.SentPacket;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import java.util.Map;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.connection.PendingConnection;
@@ -58,209 +59,260 @@ import org.mcstats.MetricsLite;
  */
 public class PacketListenerAPI extends Plugin implements Listener {
 
-	@Override
-	public void onEnable() {
-		ProxyServer.getInstance().getPluginManager().registerListener(this, this);
+    @Override
+    public void onEnable() {
+        ProxyServer.getInstance().getPluginManager().registerListener(this, this);
 
-		ProxyServer.getInstance().getScheduler().runAsync(this, new Runnable() {
+        ProxyServer.getInstance().getScheduler().runAsync(this, new Runnable() {
 
-			@Override
-			public void run() {
-				try {
-					MetricsLite metrics = new MetricsLite(PacketListenerAPI.this);
-					if (metrics.start()) {
-						System.out.println("[BungeePacketListenerAPI] Metrics started.");
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
+            @Override
+            public void run() {
+                try {
+                    MetricsLite metrics = new MetricsLite(PacketListenerAPI.this);
+                    if (metrics.start()) {
+                        System.out.println("[BungeePacketListenerAPI] Metrics started.");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
 
-	@EventHandler
-	public void onConnect(PlayerHandshakeEvent e) {
-		addConnectionChannel(e.getConnection());
-	}
+    @EventHandler
+    public void onConnect(PlayerHandshakeEvent e) {
+        addConnectionChannel(e.getConnection());
+    }
 
-	@EventHandler
-	public void onJoin(PostLoginEvent e) {
-		addChannel(e.getPlayer());
+    @EventHandler
+    public void onJoin(PostLoginEvent e) {
+        addChannel(e.getPlayer());
 
-	}
+    }
 
-	@EventHandler
-	public void onQuit(PlayerDisconnectEvent e) {
-		removeChannel(e.getPlayer());
-	}
+    @EventHandler
+    public void onQuit(PlayerDisconnectEvent e) {
+        removeChannel(e.getPlayer());
+    }
 
-	public static ChannelWrapper getChannel(ProxiedPlayer player) throws Exception {
-		ChannelWrapper channel = (ChannelWrapper) AccessUtil.setAccessible(UserConnection.class.getDeclaredField("ch")).get((UserConnection) player);
-		return channel;
-	}
+    public static ChannelWrapper getChannel(ProxiedPlayer player) throws Exception {
+        ChannelWrapper channel = (ChannelWrapper) AccessUtil.setAccessible(UserConnection.class.getDeclaredField("ch")).get((UserConnection) player);
+        return channel;
+    }
 
-	public static ChannelWrapper getChannel(PendingConnection conn) throws Exception {
-		ChannelWrapper channel = null;
-		if (conn instanceof InitialHandler) {
-			channel = (ChannelWrapper) AccessUtil.setAccessible(InitialHandler.class.getDeclaredField("ch")).get((InitialHandler) conn);
-		}
-		return channel;
-	}
+    public static ChannelWrapper getChannel(PendingConnection conn) throws Exception {
+        ChannelWrapper channel = null;
+        if (conn instanceof InitialHandler) {
+            channel = (ChannelWrapper) AccessUtil.setAccessible(InitialHandler.class.getDeclaredField("ch")).get((InitialHandler) conn);
+        }
+        return channel;
+    }
 
-	void addConnectionChannel(final PendingConnection connection) {
-		try {
-			if (connection instanceof InitialHandler) {
-				ChannelWrapper channel = getChannel(connection);
-				channel.getHandle().pipeline().addBefore("inbound-boss", "packet_listener_connection", new ChannelDuplexHandler() {
+    void addConnectionChannel(final PendingConnection connection) {
+        try {
+            if (connection instanceof InitialHandler) {
+                final ChannelWrapper channel = getChannel(connection);
+                channel.getHandle().pipeline().addBefore("inbound-boss", "packet_listener_connection", new ChannelDuplexHandler() {
 
-					@Override
-					public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-						Cancellable cancellable = new Cancellable();
-						Object pckt = msg;
+                    @Override
+                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                        Cancellable cancellable = new Cancellable();
+                        Object pckt = msg;
 
-						if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
-							ByteBuf copy = ((ByteBuf) pckt).copy();
-							int packetId = DefinedPacket.readVarInt(copy);
-							if (packetId != 0) {
-								onPacketSend(connection, packetId, cancellable);
-							}
-						}
+                        if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+                            int id = DefinedPacket.readVarInt(((ByteBuf) pckt).copy());
+                            Object out = new PacketDecoder(channel.getHandle()).decode(ctx, ((ByteBuf) pckt).copy());
 
-						if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
-							pckt = (DefinedPacket) onPacketSend(connection, (DefinedPacket) msg, cancellable);
-						}
-						if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
-							pckt = (PacketWrapper) onPacketSend(connection, msg, cancellable);
-						}
-						if (cancellable.isCancelled()) { return; }
-						super.write(ctx, pckt, promise);
-					}
+                            if (PacketWrapper.class.isAssignableFrom(out.getClass())) {
+                                DefinedPacket p = ((PacketWrapper) onPacketSend(connection, out, ((PacketWrapper) out).buf.copy(), cancellable)).packet;
+                                if (p != null) {
+                                    getLogger().info("Package name: " + p.getClass().getName());
+                                    getLogger().info("create new encoder object");
+                                    PacketEncoder pe = new PacketEncoder(channel.getHandle());
+                                    getLogger().info("Start encoding the new package");
+                                    pckt = pe.encode(ctx, p, id);
+                                    getLogger().info("Done encoding the new package");
+                                }
+                            }
+                        }
+                        if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
+                            pckt = (DefinedPacket) onPacketSend(connection, (DefinedPacket) msg, null, cancellable);
+                        }
+                        if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
+                            pckt = (PacketWrapper) onPacketSend(connection, msg, ((PacketWrapper) msg).buf.copy(), cancellable);
+                        }
+                        if (cancellable.isCancelled()) {
+                            return;
+                        }
+                        super.write(ctx, pckt, promise);
+                    }
 
-					@Override
-					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-						Cancellable cancellable = new Cancellable();
-						Object pckt = msg;
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        Cancellable cancellable = new Cancellable();
+                        Object pckt = msg;
 
-						if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
-							ByteBuf copy = ((ByteBuf) pckt).copy();
-							int packetId = DefinedPacket.readVarInt(copy);
-							if (packetId != 0) {
-								onPacketReceive(connection, packetId, cancellable);
-							}
-						}
+                        if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+                            int id = DefinedPacket.readVarInt(((ByteBuf) pckt).copy());
+                            Object out = new PacketDecoder(channel.getHandle()).decode(ctx, ((ByteBuf) pckt).copy());
 
-						if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
-							pckt = (DefinedPacket) onPacketReceive(connection, (DefinedPacket) msg, cancellable);
-						}
-						if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
-							pckt = (PacketWrapper) onPacketReceive(connection, msg, cancellable);
-						}
-						if (cancellable.isCancelled()) { return; }
-						super.channelRead(ctx, pckt);
-					}
+                            if (PacketWrapper.class.isAssignableFrom(out.getClass())) {
+                                DefinedPacket p = ((PacketWrapper) onPacketReceive(connection, out, ((PacketWrapper) out).buf.copy(), cancellable)).packet;
+                                if (p != null) {
+                                    getLogger().info("Package name: " + p.getClass().getName());
+                                    getLogger().info("create new encoder object");
+                                    PacketEncoder pe = new PacketEncoder(channel.getHandle());
+                                    getLogger().info("Start encoding the new package");
+                                    pckt = pe.encode(ctx, p, id);
+                                    getLogger().info("Done encoding the new package");
+                                }
+                            }
+                        }
 
-				});
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                        if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
+                            pckt = (DefinedPacket) onPacketReceive(connection, (DefinedPacket) msg, null, cancellable);
+                        }
+                        if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
+                            pckt = (PacketWrapper) onPacketReceive(connection, msg, ((PacketWrapper) msg).buf.copy(), cancellable);
+                        }
+                        if (cancellable.isCancelled()) {
+                            return;
+                        }
+                        super.channelRead(ctx, pckt);
+                    }
 
-	public void addChannel(final ProxiedPlayer player) {
-		try {
-			ChannelWrapper channel = getChannel(player);
-			if (channel.getHandle().pipeline().get("packet_listener_connection") != null) {
-				channel.getHandle().pipeline().remove("packet_listener_connection");// Remove the connection listener
-			}
-			channel.getHandle().pipeline().addBefore("inbound-boss", "packet_listener_player", new ChannelDuplexHandler() {
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-				@Override
-				public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-					Cancellable cancellable = new Cancellable();
-					Object pckt = msg;
+    public void addChannel(final ProxiedPlayer player) {
+        try {
+            final ChannelWrapper channel = getChannel(player);
+            if (channel.getHandle().pipeline().get("packet_listener_connection") != null) {
+                channel.getHandle().pipeline().remove("packet_listener_connection");// Remove the connection listener
+            }
+            channel.getHandle().pipeline().addBefore("inbound-boss", "packet_listener_player", new ChannelDuplexHandler() {
 
-					if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
-						ByteBuf copy = ((ByteBuf) pckt).copy();
-						int packetId = DefinedPacket.readVarInt(copy);
-						onPacketSend(player, packetId, cancellable);
-					}
+                @Override
+                public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                    Cancellable cancellable = new Cancellable();
+                    Object pckt = msg;
 
-					if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
-						pckt = (DefinedPacket) onPacketSend(player, (DefinedPacket) msg, cancellable);
-					}
-					if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
-						pckt = (PacketWrapper) onPacketSend(player, msg, cancellable);
-					}
-					if (cancellable.isCancelled()) { return; }
-					super.write(ctx, pckt, promise);
-				}
+                    if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+                        int id = DefinedPacket.readVarInt(((ByteBuf) pckt).copy());
+                        Object out = new PacketDecoder(channel.getHandle()).decode(ctx, ((ByteBuf) pckt).copy());
 
-				@Override
-				public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-					Cancellable cancellable = new Cancellable();
-					Object pckt = msg;
+                        if (PacketWrapper.class.isAssignableFrom(out.getClass())) {
+                            DefinedPacket p = ((PacketWrapper) onPacketSend(player, out, ((PacketWrapper) out).buf.copy(), cancellable)).packet;
+                            if (p != null) {
+                                getLogger().info("Package name: " + p.getClass().getName());
+                                getLogger().info("create new encoder object");
+                                PacketEncoder pe = new PacketEncoder(channel.getHandle());
+                                getLogger().info("Start encoding the new package");
+                                pckt = pe.encode(ctx, p, id);
+                                getLogger().info("Done encoding the new package");
+                            }
+                        }
+                    }
 
-					if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
-						ByteBuf copy = ((ByteBuf) pckt).copy();
-						int packetId = DefinedPacket.readVarInt(copy);
-						if (packetId != 0) {
-							onPacketReceive(player, packetId, cancellable);
-						}
-					}
+                    if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
+                        pckt = (DefinedPacket) onPacketSend(player, (DefinedPacket) msg, null, cancellable);
+                    }
+                    if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
+                        pckt = (PacketWrapper) onPacketSend(player, msg, ((PacketWrapper) msg).buf.copy(), cancellable);
+                    }
+                    if (cancellable.isCancelled()) {
+                        return;
+                    }
+                    super.write(ctx, pckt, promise);
+                }
 
-					if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
-						pckt = (DefinedPacket) onPacketReceive(player, (DefinedPacket) msg, cancellable);
-					}
-					if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
-						pckt = (PacketWrapper) onPacketReceive(player, msg, cancellable);
-					}
-					if (cancellable.isCancelled()) { return; }
-					super.channelRead(ctx, pckt);
-				}
+                @Override
+                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                    Cancellable cancellable = new Cancellable();
+                    Object pckt = msg;
 
-			});
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                    if (ByteBuf.class.isAssignableFrom(msg.getClass())) {
+                        int id = DefinedPacket.readVarInt(((ByteBuf) pckt).copy());
+                        Object out = new PacketDecoder(channel.getHandle()).decode(ctx, ((ByteBuf) pckt).copy());
 
-	public void removeChannel(ProxiedPlayer player) {
-		try {
-			ChannelWrapper channel = getChannel(player);
-			channel.getHandle().pipeline().remove("packet_listener_player");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                        if (PacketWrapper.class.isAssignableFrom(out.getClass())) {
+                            DefinedPacket p = ((PacketWrapper) onPacketReceive(player, out, ((PacketWrapper) out).buf.copy(), cancellable)).packet;
+                            if (p != null) {
+                                getLogger().info("Package name: " + p.getClass().getName());
+                                getLogger().info("create new encoder object");
+                                PacketEncoder pe = new PacketEncoder(channel.getHandle());
+                                getLogger().info("Start encoding the new package");
+                                pckt = pe.encode(ctx, p, id);
+                                getLogger().info("Done encoding the new package");
+                            }
+                        }
+                    }
 
-	public Object onPacketReceive(Object p, Object packet, Cancellable cancellable) {
-		if (packet == null) { return packet; }
-		ReceivedPacket pckt = null;
-		if (p instanceof ProxiedPlayer) {
-			pckt = new ReceivedPacket(packet, cancellable, (ProxiedPlayer) p);
-		}
-		if (p instanceof PendingConnection) {
-			pckt = new ReceivedPacket(packet, cancellable, (PendingConnection) p);
-		}
-		if (pckt == null) {
-			return packet;
-		}
-		PacketHandler.notifyHandlers(pckt);
-		return pckt.getSourcePacket();
-	}
+                    if (DefinedPacket.class.isAssignableFrom(msg.getClass())) {
+                        pckt = (DefinedPacket) onPacketReceive(player, (DefinedPacket) msg, null, cancellable);
+                    }
+                    if (PacketWrapper.class.isAssignableFrom(msg.getClass())) {
+                        pckt = (PacketWrapper) onPacketReceive(player, msg, ((PacketWrapper) msg).buf.copy(), cancellable);
+                    }
+                    if (cancellable.isCancelled()) {
+                        return;
+                    }
+                    super.channelRead(ctx, pckt);
+                }
 
-	public Object onPacketSend(Object p, Object packet, Cancellable cancellable) {
-		if (packet == null) { return packet; }
-		SentPacket pckt = null;
-		if (p instanceof ProxiedPlayer) {
-			pckt = new SentPacket(packet, cancellable, (ProxiedPlayer) p);
-		}
-		if (p instanceof PendingConnection) {
-			pckt = new SentPacket(packet, cancellable, (PendingConnection) p);
-		}
-		if (pckt == null) { return packet; }
-		PacketHandler.notifyHandlers(pckt);
-		return pckt.getSourcePacket();
-	}
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void removeChannel(ProxiedPlayer player) {
+        try {
+            ChannelWrapper channel = getChannel(player);
+            channel.getHandle().pipeline().remove("packet_listener_player");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Object onPacketReceive(Object p, Object packet, ByteBuf raw, Cancellable cancellable) {
+        if (packet == null) {
+            return packet;
+        }
+        ReceivedPacket pckt = null;
+        if (p instanceof ProxiedPlayer) {
+            pckt = new ReceivedPacket(packet, raw, cancellable, (ProxiedPlayer) p);
+        }
+        if (p instanceof PendingConnection) {
+            pckt = new ReceivedPacket(packet, raw, cancellable, (PendingConnection) p);
+        }
+        if (pckt == null) {
+            return packet;
+        }
+        PacketHandler.notifyHandlers(pckt);
+        return pckt.getSourcePacket();
+    }
+
+    public Object onPacketSend(Object p, Object packet, ByteBuf raw, Cancellable cancellable) {
+        if (packet == null) {
+            return packet;
+        }
+        SentPacket pckt = null;
+        if (p instanceof ProxiedPlayer) {
+            pckt = new SentPacket(packet, raw, cancellable, (ProxiedPlayer) p);
+        }
+        if (p instanceof PendingConnection) {
+            pckt = new SentPacket(packet, raw, cancellable, (PendingConnection) p);
+        }
+        if (pckt == null) {
+            return packet;
+        }
+        PacketHandler.notifyHandlers(pckt);
+        return pckt.getSourcePacket();
+    }
 
 }

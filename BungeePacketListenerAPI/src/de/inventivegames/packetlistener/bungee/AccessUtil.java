@@ -29,6 +29,7 @@
 package de.inventivegames.packetlistener.bungee;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 /**
  *
@@ -45,6 +46,8 @@ public class AccessUtil {
 	 * @param f
 	 *            Field set accessible
 	 * @return <code>true</code> if the field was previously accessible
+     * @throws java.lang.NoSuchFieldException
+     * @throws java.lang.IllegalAccessException
 	 */
 	public static Field setAccessible(Field f) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
 		f.setAccessible(true);
@@ -54,4 +57,20 @@ public class AccessUtil {
 		return f;
 	}
 
+	/**
+	 * Set a specified Method accessible
+	 *
+	 * @param m
+	 *            Method set accessible
+	 * @return <code>true</code> if the method was previously accessible
+     * @throws java.lang.NoSuchFieldException
+     * @throws java.lang.IllegalAccessException
+	 */
+	public static Method setAccessible(Method m) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+		m.setAccessible(true);
+		Field modifiersField = Method.class.getDeclaredField("modifiers");
+		modifiersField.setAccessible(true);
+		modifiersField.setInt(m, m.getModifiers() & 0xFFFFFFEF);
+		return m;
+	}
 }
